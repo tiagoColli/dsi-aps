@@ -1,0 +1,80 @@
+services:
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flaskdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - aps_network
+    mem_limit: 1g
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - aps_network
+    mem_limit: 1g
+
+  server:
+    build: ./app
+    container_name: server
+    ports:
+      - "8080:5000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+      FLASK_RUN_HOST: 0.0.0.0
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/flaskdb
+    volumes:
+      - .:/app
+    networks:
+      - aps_network
+    mem_limit: 1g
+
+  worker:
+    build:
+      context: ./app
+    command: ["sh", "-c", "pip install watchdog && watchmedo auto-restart --pattern='*.py' --recursive --directory=/app -- rq worker --url redis://redis:6379"]
+    container_name: worker
+    depends_on:
+      - server
+      - redis
+    volumes:
+      - .:/app
+    networks:
+      - aps_network
+    mem_limit: 8g
+    cpus: '2.0'    
+
+  rq-dashboard:
+    image: eoranged/rq-dashboard
+    container_name: rq-dashboard
+    ports:
+      - "9181:9181"
+    environment:
+      RQ_DASHBOARD_REDIS_URL: redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - aps_network
+    mem_limit: 512mb
+
+volumes:
+  pgdata:
+
+networks:
+  aps_network:
+    driver: bridge
