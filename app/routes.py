@@ -104,7 +104,7 @@ def get_server_logs():
         if os.path.exists(log_path):
             with open(log_path, 'r') as f:
                 for line in f:
-                    match = re.match(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] SERVER CPU: ([\d.]+)% \| RAM: ([\d.]+) MB', line.strip())
+                    match = re.match(r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] SYSTEM CPU: ([\d.]+)% \| RAM: ([\d.]+) MB', line.strip())
                     if match:
                         timestamp_str, cpu, ram = match.groups()
                         log_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
