@@ -1,141 +1,114 @@
-const fs = require('node:fs');
 const path = require('path');
 const axios = require('axios');
-
+const SIGNAL_SEED = require('./signalSeed');
+const { getRandAlg, randonTimeout, splitSignal, signalGain, openFiles } = require('./helpers');
 
 const SERVER_URL = process.env.SERVER_URL;
+const SIGNALS = SIGNAL_SEED;
+const TOTAL_IMAGES = 15;
 
-function getRandAlg() {
-    return ['cgne', 'cgnr'][Math.floor(Math.random() * 2)]
+async function seedUsers() {
+  const users = {}
+  for (let i = 0; i < TOTAL_IMAGES; i++) {
+    const uniqueSuffix = Date.now() + '-' + Math.floor(Math.random() * 10000);
+    const name = `user_${uniqueSuffix}`;
+    const userId = await createUser(name);
+
+    let signal = await pickRandomSignal();
+    signal = await buildUserSignal(signal);
+
+    users[userId] = signal;
+  }
+
+  return users;
 }
 
-function getRandomSignal(signals) {
-    const keys = Object.keys(signals);
-    const randomIndex = Math.floor(Math.random() * keys.length);
-    const randomKey = keys[randomIndex];
-    const randomValue = signals[randomKey];
-
-    return randomValue
+async function createUser(name) {
+  try {
+    const response = await axios.post(`${SERVER_URL}/users`, { name });
+    return response.data.id
+  } catch (error) {
+    console.error('Error: ', error.message);
+  }
 }
 
-function signalGain(signal, s, n) {
-    for (let c = 1; c < n; c++) {
-        for (let l = 1; l < s; l++) {
-            y = 100 + 1 / 20 * l * Math.sqrt(l)
-            signal[l * c] = signal[l * c] * y
-        }
-    }
-
-    return splitSignal(signal)
+async function buildUserSignal(signal) {
+  const originalSignal = await openFiles(signal.filePath);
+  const signalArray = signalGain(originalSignal, signal.S, signal.N)
+  const signalChunks = splitSignal(signalArray)
+  signal.signalArray = signalChunks
+  return signal
 }
 
-function openFiles(path) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(path, 'utf8', (err, data) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-
-            const results = data
-                .split('\n')
-                .filter(line => line.trim() !== '')
-                .map(Number);
-
-            resolve(results);
-        });
-    });
-}
-
-async function getSignals() {
-    const g1 = await openFiles(path.join('resources', 'G-1.csv'), 'utf8');
-    // const g2 = await openFiles(path.join('resources', 'G-2.csv'), 'utf8');
-    // const g3 = await openFiles(path.join('resources', 'G-3.csv'), 'utf8');
-    // const g4 = await openFiles(path.join('resources', 'G-4.csv'), 'utf8');
-    // const g5 = await openFiles(path.join('resources', 'G-5.csv'), 'utf8');
-    // const g6 = await openFiles(path.join('resources', 'G-6.csv'), 'utf8');
-
-    const userg1 = await createUser("g1")
-    // const userg2 = await createUser("g2")
-    // const userg3 = await createUser("g3")
-    // const userg4 = await createUser("g4")
-    // const userg5 = await createUser("g5")
-    // const userg6 = await createUser("g6")
-
-    signals = {
-        g1: { name: 'g1', signalArray: signalGain(g1, 794, 64), size: 60, user_id: userg1, model: 'H-1' },
-        // g2: { name: 'g2', signalArray: signalGain(g2, 794, 64), size: 60, user_id: userg2, model: 'H-1' },
-        // g3: { name: 'g3', signalArray: signalGain(g3, 794, 64), size: 60, user_id: userg3, model: 'H-1' },
-        // g4: { name: 'g4', signalArray: signalGain(g4, 794, 64), size: 30, user_id: userg4, model: 'H-2' },
-        // g5: { name: 'g5', signalArray: signalGain(g5, 794, 64), size: 30, user_id: userg5, model: 'H-2' },
-        // g6: { name: 'g6', signalArray: signalGain(g6, 794, 64), size: 30, user_id: userg6, model: 'H-2' },
-    }
-
-    return signals
-}
-
-function splitSignal(signal) {
-    const chunkSize = Math.ceil(signal.length / 5);
-
-    const chunks = [];
-
-    for (let i = 0; i < signal.length; i += chunkSize) {
-        chunks.push(signal.slice(i, i + chunkSize));
-    }
-
-    return chunks;
-}
-
-async function createUser(signalName) {
-    try {
-        const response = await axios.post(`${SERVER_URL}/users`, { name: signalName });
-        return response.data.id
-    } catch (error) {
-        console.error('Error: ', error.message);
-    }
+async function pickRandomSignal() {
+  const keys = Object.keys(SIGNALS);
+  const randomIndex = keys.length * Math.random() << 0;
+  const originalSignal = SIGNALS[keys[randomIndex]];
+  const signalCopy = {
+    ...originalSignal,
+    signalArray: []
+  };
+  return signalCopy;
 }
 
 async function sendSignal(body) {
-    try {
-        const response = await axios.post(`${SERVER_URL}/images`, body);
-        return response
-    } catch (error) {
-        console.error('Error: ', error.message);
-    }
+  try {
+    const response = await axios.post(`${SERVER_URL}/images`, body);
+    return response
+  } catch (error) {
+    console.error('Error: ', error.message);
+  }
 }
 
-async function callImage(signals) {
-    const signal = getRandomSignal(signals)
+function pickRandomUser(users) {
+  const randomKey = Object.keys(users)[Math.floor(Math.random() * Object.keys(users).length)];
+  return randomKey;
+}
 
-    const isLastPiece = signal.signalArray.length == 1
-    const signalPiece = signal.signalArray.splice(0, 1)
+async function sendSignalPiece(userId, signal, signalPiece, isLastPiece) {
+  const body = {
+    user_id: userId,
+    algorithm: getRandAlg(),
+    model: signal.model,
+    size: signal.size,
+    image_identifier: signal.name + userId,
+    start_reconstruction: isLastPiece,
+    signal: signalPiece
+  };
 
-    const body = {
-        user_id: signal.user_id,
-        algorithm: 'cgne',
-        model: signal.model,
-        size: signal.size,
-        image_identifier: signal.name,
-        start_reconstruction: isLastPiece,
-        signal: signalPiece[0]
+  await sendSignal(body);
+  console.log(`Signal piece sent for ${signal.name} (user: ${userId})`);
+}
+
+async function processUsers(users) {
+  while (Object.keys(users).length > 0) {
+    const userId = pickRandomUser(users);
+    const signal = users[userId];
+    const isLastPiece = signal.signalArray.length === 1;
+    const signalPiece = signal.signalArray.splice(0, 1)[0];
+
+    if (!signalPiece) {
+      console.log(`Finished sending pieces for ${signal.name} (user: ${userId})`);
+      delete users[userId];
+      continue;
     }
 
-    if (isLastPiece) delete signals[signal.name]
+    await sendSignalPiece(userId, signal, signalPiece, isLastPiece);
 
-    await sendSignal(body)
-
-    if (Object.keys(signals).length > 0) {
-        setTimeout(() => {
-            callImage(signals);
-        }, "2000");
+    if (isLastPiece) {
+      delete users[userId];
+      console.log(`Finished sending pieces for ${signal.name} (user: ${userId})`);
     }
+
+    await new Promise(resolve => setTimeout(resolve, randonTimeout()));
+  }
+
+  console.log("Finished all users");
 }
 
 async function run() {
-    const signals = await getSignals()
-
-    callImage(signals)
+  const users = await seedUsers()
+  await processUsers(users)
 }
 
 run()
-

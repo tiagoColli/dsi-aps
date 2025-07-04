@@ -1,12 +1,14 @@
 {
-    "name": "client",
-    "version": "1.0.0",
-    "main": "src/index.js",
-    "scripts": {
-        "start": "node src/index.js"
-    },
-    "dependencies": {
-        "axios": "^1.5.0",
-        "dotenv": "^16.3.1"
-    }
+  "name": "client",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "generate-report": "node src/generateReport.js"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "dotenv": "^16.3.1",
+    "pdfkit": "^0.14.0"
+  }
 }

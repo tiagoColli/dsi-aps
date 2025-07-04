@@ -13,4 +13,5 @@ services:
 
 networks:
   aps_network:
-    driver: bridge
+    external: true
+    name: dis-app-server_aps_network

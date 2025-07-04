@@ -17,4 +17,4 @@ RUN pip install pandas
 RUN pip install torch
 RUN pip install torch torchvision torchaudio
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["sh", "-c", "python app/monitor_server.py & flask run --host=0.0.0.0"]

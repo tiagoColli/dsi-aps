@@ -27,5 +27,34 @@ class Image(db.Model):
 
     user = db.relationship("User", backref=db.backref("images", uselist=True))
 
+    def get_image_filename(self):
+        """Generate the expected filename for this image"""
+        return f"{self.image_identifier}_{self.algorithm}_{self.model}.png"
+
     def to_dict(self):
-        return {"id": self.id, "image_identifier": self.image_identifier, "user": self.user, "signal": self.signal, "algorithm": self.algorithm, "model": self.model, "initial_date": self.initial_date, "final_date": self.final_date, "size": self.size, "iterations": self.iterations}
+        return {
+            "id": self.id, 
+            "image_identifier": self.image_identifier, 
+            "user": self.user.to_dict() if self.user else None, 
+            "signal": self.signal, 
+            "algorithm": self.algorithm, 
+            "model": self.model, 
+            "initial_date": self.initial_date, 
+            "final_date": self.final_date, 
+            "size": self.size, 
+            "iterations": self.iterations,
+            "final_image": self.final_image
+        }
+
+    def to_summary_dict(self):
+        return {
+            "id": self.id,
+            "image_identifier": self.image_identifier,
+            "user": self.user.to_dict() if self.user else None,
+            "algorithm": self.algorithm,
+            "model": self.model,
+            "initial_date": self.initial_date,
+            "final_date": self.final_date,
+            "size": self.size,
+            "iterations": self.iterations
+        }

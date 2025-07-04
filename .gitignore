@@ -1,2 +1,8 @@
 app/__pycache__
 app/migrations
+app/reconstruction_models
+app/monitoring.log
+app/results
+client/node_modules
+client/server_reports
+client/image_reports

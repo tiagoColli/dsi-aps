@@ -47,7 +47,7 @@ services:
   worker:
     build:
       context: ./app
-    command: ["sh", "-c", "pip install watchdog && watchmedo auto-restart --pattern='*.py' --recursive --directory=/app -- rq worker --url redis://redis:6379"]
+    command: ["sh", "-c", "pip install watchdog && PYTHONPATH=/app watchmedo auto-restart --pattern='*.py' --recursive --directory=/app -- rq worker --url redis://redis:6379"]
     container_name: worker
     depends_on:
       - server

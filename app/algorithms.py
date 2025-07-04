@@ -2,59 +2,73 @@ import torch
 
 class Algorithms:
     @staticmethod
-    def cgne(H, image, max_iter=1000, tol=1e-4):
-        signal_length = 50816 if image.size == 60 else 27904
-
-        ht = H.T
-        g = torch.tensor(image.signal[:signal_length], dtype=torch.float32).unsqueeze(0)
-        f = torch.zeros(H.shape[1], 1, dtype=H.dtype)
+    def cgne(H, g, max_iter=1000, tol=1e-4):
+        """
+        CGNE (Conjugate Gradient Normal Error) algorithm.
+        :param H: Model matrix (torch.Tensor of shape [m, n])
+        :param g: Signal vector (torch.Tensor of shape [m, 1])
+        :return: Reconstructed image (f) as a PyTorch tensor, and number of iterations
+        """
+        Ht = H.T
+        f = torch.zeros(H.shape[1], 1, dtype=H.dtype, device=H.device)
         r = g - torch.matmul(H, f)
-        p = torch.matmul(ht, r)
-        rs_old = torch.matmul(r.T, r)
+        z = torch.matmul(Ht, r)
+        p = z
 
         for i in range(max_iter):
             Hp = torch.matmul(H, p)
-            alpha = rs_old / torch.matmul(p.T, p)
+            alpha = torch.matmul(z.T, z) / torch.matmul(Hp.T, Hp)
             f = f + alpha * p
-            r = r - alpha * Hp
-            rs_new = torch.matmul(r.T, r)
+            r_next = r - alpha * Hp
+            z_next = torch.matmul(Ht, r_next)
 
-            if torch.sqrt(rs_new) < tol:
-                print(f"Convergence after {i+1} iterations.")
+            error = abs(torch.norm(r, 2).item() - torch.norm(r_next, 2).item())
+            if error < tol:
+                num_iterations = i
                 break
 
-            beta = rs_new / rs_old
-            p = torch.matmul(ht, r) + beta * p
-            rs_old = rs_new
+            beta = torch.matmul(z_next.T, z_next) / torch.matmul(z.T, z)
+            p = z_next + beta * p
+            r = r_next
+            z = z_next
+        else:
+            num_iterations = max_iter
 
-        return f, i
+        print("Processing finished.")
+        return f, num_iterations
 
     @staticmethod
-    def cgnr(H, image, max_iter=1000, tol=1e-4):
-        signal_length = 50816 if image.size == 60 else 27904
-
-        ht = H.T
-        f = torch.zeros(H.shape[1], dtype=torch.float32)
-        g = torch.tensor(image.signal[:signal_length], dtype=torch.float32)
+    def cgnr(H, g, max_iter=1000, tol=1e-4):
+        """
+        CGNR (Conjugate Gradient Normal Residual) algorithm.
+        :param H: Model matrix (torch.Tensor of shape [m, n])
+        :param g: Signal vector (torch.Tensor of shape [m, 1])
+        :return: Reconstructed image (f) as a PyTorch tensor, and number of iterations
+        """
+        Ht = H.T
+        f = torch.zeros(H.shape[1], 1, dtype=H.dtype, device=H.device)
         r = g - torch.matmul(H, f)
-        z = torch.matmul(ht, r)
+        z = torch.matmul(Ht, r)
         p = z
-        rz_old = torch.matmul(z.T, z)
 
         for i in range(max_iter):
-            Hp = torch.matmul(H, p)
-            alpha = rz_old / torch.matmul(Hp.T, Hp)
+            w = torch.matmul(H, p)
+            alpha = torch.matmul(z.T, z) / torch.matmul(w.T, w)
             f = f + alpha * p
-            r = r - alpha * Hp
-            z = torch.matmul(ht, r)
-            rz_new = torch.matmul(z.T, z)
+            r_next = r - alpha * w
+            z_next = torch.matmul(Ht, r_next)
 
-            if torch.sqrt(rz_new) < tol:
-                print(f"Convergence after {i+1} iterations.")
+            error = abs(torch.norm(r, 2).item() - torch.norm(r_next, 2).item())
+            if error < tol:
+                num_iterations = i
                 break
 
-            beta = rz_new / rz_old
-            p = z + beta * p
-            rz_old = rz_new
+            beta = torch.matmul(z_next.T, z_next) / torch.matmul(z.T, z)
+            p = z_next + beta * p
+            r = r_next
+            z = z_next
+        else:
+            num_iterations = max_iter
 
-        return f, i
+        print('CGNR algorithm finished.')
+        return f, num_iterations

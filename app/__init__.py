@@ -9,7 +9,6 @@ def create_app():
     app.config.from_object(Config)
     db.init_app(app)
 
-    # Initialize Flask-Migrate
     migrate = Migrate(app, db)
 
     app.register_blueprint(routes, url_prefix='/')
