@@ -1,0 +1,17 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    # container_name: client
+    # ports:
+    #   - "3000:3000"
+    environment:
+      SERVER_URL: http://server:5000
+    networks:
+      - aps_network
+
+networks:
+  aps_network:
+    external: true
+    name: dis-app-server_aps_network

@@ -2,7 +2,7 @@ DOCKER_COMPOSE_SERVER = docker-compose -f docker-compose.server.yaml
 DOCKER_COMPOSE_CLIENT = docker-compose -f docker-compose.client.yaml
 FLASK_CONTAINER = server
 
-.PHONY: follow-all-logs follow-backend restart-backend run-client rebuild-client stop-all generate-server-report
+.PHONY: follow-all-logs follow-backend restart-backend run-client rebuild-client stop-all generate-server-report run-multi-client
 
 follow-all-logs:
 	@echo "Following all container logs (Ctrl+C to stop):"
@@ -36,7 +36,7 @@ restart-backend:
 	rm -rf app/results/*
 	@echo "✅ Results folder cleared!"
 	@echo "Clearing monitoring log..."
-	rm -f monitoring.log
+	rm -f app/monitoring.log
 	@echo "✅ Monitoring log cleared!"
 	@echo "Clearing server reports..."
 	rm -rf client/server_reports/*
@@ -94,3 +94,9 @@ stop-all:
 generate-server-report:
 	@echo "📊 Generating server usage report and PDF..."
 	docker run --rm -v $(PWD)/client:/app -w /app --network host -e SERVER_URL=http://localhost:8080 node:18 node src/serverReport.js
+
+run-multi-client:
+	@echo "Starting multiple client containers..."
+	N=$${N:-5}; \
+	docker-compose -f docker-compose.client.multi.yaml up --scale client=$$N -d
+	@echo "✅ $$N clients started!"
